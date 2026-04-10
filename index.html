@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>NEXUS v11 — Gold Bot MEXC</title>
+<title>Kröte V1 — Gold Bot MEXC</title>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@400;500;600;700&family=Orbitron:wght@400;700;900&display=swap');
 
@@ -666,9 +666,9 @@
 <!-- HEADER -->
 <header>
   <div class="logo">
-    <div class="logo-icon">NX</div>
+    <div class="logo-icon">KV</div>
     <div class="logo-text">
-      <h1>NEXUS v11</h1>
+      <h1>Kröte V1</h1>
       <span>GOLD TRADING BOT · MEXC · XAU/USDT · 200x</span>
     </div>
   </div>
@@ -837,7 +837,7 @@
     <div class="panel">
       <div class="panel-header">
         <span class="icon">🎯</span>
-        <h3>Strategie-Bedingungen (NEXUS v11)</h3>
+        <h3>Strategie-Bedingungen (Kröte V1)</h3>
       </div>
       <div class="panel-body">
         <div class="conditions-grid" id="condGrid">
@@ -1080,7 +1080,7 @@
 
 <script>
 // ═══════════════════════════════════════════════════════════════
-// NEXUS v11 — MEXC Gold Bot Core
+// Kröte V1 — MEXC Gold Bot Core
 // ═══════════════════════════════════════════════════════════════
 
 const STATE = {
@@ -1130,9 +1130,9 @@ function init() {
   renderHours();
   startClock();
   updateCalc();
-  log('info', 'NEXUS v11 Gold Bot bereit');
+  log('info', 'Kröte V1 Gold Bot bereit');
   log('info', 'MEXC API Key eingeben → Bot starten');
-  log('gold', 'Strategie: SL 0.05% / TP 0.15% / BE 0.05% / 200x');
+  log('gold', 'Kröte V1 · Strategie: SL 0.05% / TP 0.15% / BE 0.05% / 200x');
   // Balance sofort anzeigen
   const initCap = parseFloat(document.getElementById('capital').value) || 100;
   document.getElementById('metBalance').textContent = initCap.toFixed(2);
@@ -1271,6 +1271,16 @@ async function fetchPrice() {
         (chg>=0?'+':'') + chg.toFixed(2) + '% 24h';
       document.getElementById('metPriceChg').className =
         'metric-sub ' + (chg>=0?'green':'red');
+      if (STATE.position) updatePositionPnl(price);
+      return price;
+    }
+    // Fallback: klines
+    const k = await apiGet('/api/klines', { symbol, interval: '1m', limit: '1' });
+    if (k && k.length > 0) {
+      const price = parseFloat(k[0][4]);
+      STATE.lastPrice = price;
+      document.getElementById('metPrice').textContent = '$' + price.toFixed(2);
+      document.getElementById('metPriceChg').textContent = 'Live Preis';
       if (STATE.position) updatePositionPnl(price);
       return price;
     }
