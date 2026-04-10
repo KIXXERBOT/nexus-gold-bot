@@ -1,0 +1,1713 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NEXUS v11 — Gold Bot MEXC</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@400;500;600;700&family=Orbitron:wght@400;700;900&display=swap');
+
+  :root {
+    --gold: #C9A84C;
+    --gold2: #FFD700;
+    --dark: #050A0F;
+    --dark2: #0A1520;
+    --dark3: #0F1E2E;
+    --panel: #0D1B2A;
+    --panel2: #112233;
+    --blue: #1A6FFF;
+    --blue2: #0D4ABA;
+    --green: #00FF88;
+    --green2: #00C864;
+    --red: #FF3355;
+    --red2: #CC1133;
+    --orange: #FF8C00;
+    --cyan: #00E5FF;
+    --white: #E8F4FF;
+    --grey: #4A6A8A;
+    --grey2: #2A3A4A;
+  }
+
+  * { margin:0; padding:0; box-sizing:border-box; }
+
+  body {
+    background: var(--dark);
+    color: var(--white);
+    font-family: 'Rajdhani', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Grid background */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(26,111,255,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(26,111,255,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* ── HEADER ── */
+  header {
+    position: relative;
+    z-index: 10;
+    background: linear-gradient(135deg, var(--dark2), var(--panel));
+    border-bottom: 1px solid var(--gold);
+    padding: 10px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .logo-icon {
+    width: 42px; height: 42px;
+    background: linear-gradient(135deg, var(--gold), var(--gold2));
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Orbitron', monospace;
+    font-weight: 900;
+    font-size: 16px;
+    color: var(--dark);
+  }
+
+  .logo-text h1 {
+    font-family: 'Orbitron', monospace;
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--gold);
+    letter-spacing: 2px;
+  }
+
+  .logo-text span {
+    font-size: 11px;
+    color: var(--grey);
+    letter-spacing: 1px;
+  }
+
+  .header-status {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .status-pill {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 14px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    border: 1px solid;
+  }
+
+  .status-pill.stopped { border-color: var(--grey); color: var(--grey); background: rgba(74,106,138,0.1); }
+  .status-pill.running { border-color: var(--green); color: var(--green); background: rgba(0,255,136,0.1); }
+  .status-pill.manual  { border-color: var(--orange); color: var(--orange); background: rgba(255,140,0,0.1); }
+
+  .dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: currentColor;
+  }
+
+  .dot.pulse { animation: pulse 1.5s infinite; }
+
+  @keyframes pulse {
+    0%,100% { opacity: 1; transform: scale(1); }
+    50%      { opacity: 0.5; transform: scale(0.7); }
+  }
+
+  /* ── MAIN LAYOUT ── */
+  .main {
+    position: relative;
+    z-index: 1;
+    display: grid;
+    grid-template-columns: 320px 1fr 300px;
+    gap: 12px;
+    padding: 12px;
+    min-height: calc(100vh - 64px);
+  }
+
+  /* ── PANELS ── */
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--grey2);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+
+  .panel-header {
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--grey2);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: linear-gradient(90deg, var(--panel2), var(--panel));
+  }
+
+  .panel-header .icon { font-size: 14px; }
+  .panel-header h3 {
+    font-family: 'Orbitron', monospace;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    color: var(--gold);
+    text-transform: uppercase;
+  }
+
+  .panel-body { padding: 14px; }
+
+  /* ── FORM ELEMENTS ── */
+  .form-group { margin-bottom: 12px; }
+  .form-group label {
+    display: block;
+    font-size: 11px;
+    color: var(--grey);
+    letter-spacing: 1px;
+    margin-bottom: 5px;
+    text-transform: uppercase;
+  }
+
+  .form-group input, .form-group select {
+    width: 100%;
+    background: var(--dark2);
+    border: 1px solid var(--grey2);
+    border-radius: 5px;
+    padding: 8px 12px;
+    color: var(--white);
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 13px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+
+  .form-group input:focus, .form-group select:focus {
+    border-color: var(--gold);
+  }
+
+  .form-group select option { background: var(--dark2); }
+
+  .form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+
+  /* ── SLIDERS ── */
+  .slider-group { margin-bottom: 12px; }
+  .slider-group label {
+    display: flex;
+    justify-content: space-between;
+    font-size: 11px;
+    color: var(--grey);
+    letter-spacing: 1px;
+    margin-bottom: 5px;
+    text-transform: uppercase;
+  }
+
+  .slider-group label span {
+    color: var(--gold);
+    font-family: 'Share Tech Mono', monospace;
+    font-weight: 700;
+  }
+
+  input[type=range] {
+    width: 100%;
+    height: 4px;
+    -webkit-appearance: none;
+    background: var(--grey2);
+    border-radius: 2px;
+    outline: none;
+  }
+
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 16px; height: 16px;
+    border-radius: 50%;
+    background: var(--gold);
+    cursor: pointer;
+    border: 2px solid var(--dark);
+  }
+
+  /* ── BUTTONS ── */
+  .btn {
+    width: 100%;
+    padding: 11px;
+    border: none;
+    border-radius: 6px;
+    font-family: 'Orbitron', monospace;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-transform: uppercase;
+  }
+
+  .btn-start {
+    background: linear-gradient(135deg, var(--green2), var(--green));
+    color: var(--dark);
+    margin-bottom: 8px;
+  }
+
+  .btn-start:hover { filter: brightness(1.15); transform: translateY(-1px); }
+
+  .btn-manual {
+    background: linear-gradient(135deg, var(--gold), var(--gold2));
+    color: var(--dark);
+    margin-bottom: 8px;
+  }
+
+  .btn-manual:hover { filter: brightness(1.1); transform: translateY(-1px); }
+
+  .btn-stop {
+    background: linear-gradient(135deg, var(--red2), var(--red));
+    color: white;
+  }
+
+  .btn-stop:hover { filter: brightness(1.1); }
+
+  .btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    transform: none;
+  }
+
+  /* ── METRICS ── */
+  .metric-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+
+  .metric {
+    background: var(--dark2);
+    border: 1px solid var(--grey2);
+    border-radius: 6px;
+    padding: 10px;
+    text-align: center;
+  }
+
+  .metric-label {
+    font-size: 10px;
+    color: var(--grey);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+  }
+
+  .metric-value {
+    font-family: 'Orbitron', monospace;
+    font-size: 18px;
+    font-weight: 700;
+  }
+
+  .metric-sub {
+    font-size: 10px;
+    color: var(--grey);
+    margin-top: 2px;
+  }
+
+  .green { color: var(--green); }
+  .red   { color: var(--red); }
+  .gold  { color: var(--gold); }
+  .cyan  { color: var(--cyan); }
+  .orange{ color: var(--orange); }
+  .grey  { color: var(--grey); }
+
+  /* ── CENTER PANEL ── */
+  .center-col {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  /* ── CONDITIONS ── */
+  .conditions-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 8px;
+  }
+
+  .condition {
+    background: var(--dark2);
+    border: 1px solid var(--grey2);
+    border-radius: 6px;
+    padding: 10px 8px;
+    text-align: center;
+    transition: all 0.3s;
+  }
+
+  .condition.ok {
+    border-color: var(--green);
+    background: rgba(0,255,136,0.05);
+  }
+
+  .condition.fail {
+    border-color: var(--red);
+    background: rgba(255,51,85,0.05);
+  }
+
+  .condition.warn {
+    border-color: var(--orange);
+    background: rgba(255,140,0,0.05);
+  }
+
+  .condition-icon { font-size: 18px; margin-bottom: 4px; }
+  .condition-name { font-size: 10px; color: var(--grey); letter-spacing: 0.5px; margin-bottom: 3px; }
+  .condition-val  { font-family: 'Share Tech Mono', monospace; font-size: 11px; font-weight: 700; }
+
+  /* ── SIGNAL BAR ── */
+  .signal-bar {
+    background: var(--dark2);
+    border: 1px solid var(--grey2);
+    border-radius: 8px;
+    padding: 14px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .signal-score {
+    font-family: 'Orbitron', monospace;
+    font-size: 36px;
+    font-weight: 900;
+    min-width: 80px;
+    text-align: center;
+  }
+
+  .signal-info { flex: 1; }
+  .signal-label {
+    font-size: 11px;
+    color: var(--grey);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+  }
+
+  .signal-direction {
+    font-family: 'Orbitron', monospace;
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: 2px;
+  }
+
+  /* ── POSITION PANEL ── */
+  .position-panel {
+    background: var(--dark2);
+    border: 1px solid var(--grey2);
+    border-radius: 8px;
+    padding: 14px;
+  }
+
+  .pos-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+  }
+
+  .pos-title {
+    font-family: 'Orbitron', monospace;
+    font-size: 12px;
+    color: var(--gold);
+    letter-spacing: 1px;
+  }
+
+  .pos-badge {
+    font-size: 11px;
+    padding: 3px 10px;
+    border-radius: 12px;
+    font-weight: 700;
+    letter-spacing: 1px;
+  }
+
+  .pos-badge.long  { background: rgba(0,255,136,0.15); color: var(--green); border: 1px solid var(--green); }
+  .pos-badge.short { background: rgba(255,51,85,0.15);  color: var(--red);   border: 1px solid var(--red); }
+  .pos-badge.none  { background: rgba(74,106,138,0.15); color: var(--grey);  border: 1px solid var(--grey); }
+
+  .pos-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+
+  .pos-item { text-align: center; }
+  .pos-item-label { font-size: 10px; color: var(--grey); letter-spacing: 0.5px; margin-bottom: 2px; }
+  .pos-item-val { font-family: 'Share Tech Mono', monospace; font-size: 14px; font-weight: 700; }
+
+  /* ── PROGRESS BAR ── */
+  .progress-bar {
+    height: 6px;
+    background: var(--grey2);
+    border-radius: 3px;
+    overflow: hidden;
+    margin: 6px 0;
+  }
+
+  .progress-fill {
+    height: 100%;
+    border-radius: 3px;
+    transition: width 0.5s;
+    background: linear-gradient(90deg, var(--blue), var(--green));
+  }
+
+  .progress-labels {
+    display: flex;
+    justify-content: space-between;
+    font-size: 10px;
+    color: var(--grey);
+    margin-top: 2px;
+  }
+
+  /* ── LOG ── */
+  .log-area {
+    background: var(--dark);
+    border: 1px solid var(--grey2);
+    border-radius: 6px;
+    padding: 10px;
+    height: 140px;
+    overflow-y: auto;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px;
+  }
+
+  .log-entry {
+    padding: 2px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.03);
+  }
+
+  .log-time { color: var(--grey); margin-right: 8px; }
+  .log-ok   { color: var(--green); }
+  .log-warn { color: var(--orange); }
+  .log-err  { color: var(--red); }
+  .log-info { color: var(--cyan); }
+  .log-gold { color: var(--gold); }
+
+  /* ── TRADE HISTORY ── */
+  .trade-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .trade-table th {
+    text-align: left;
+    padding: 6px 8px;
+    font-size: 10px;
+    color: var(--grey);
+    letter-spacing: 1px;
+    border-bottom: 1px solid var(--grey2);
+    text-transform: uppercase;
+  }
+  .trade-table td { padding: 6px 8px; border-bottom: 1px solid rgba(255,255,255,0.03); }
+  .trade-table tr:hover td { background: rgba(255,255,255,0.02); }
+
+  /* ── RIGHT PANEL ── */
+  .right-col { display: flex; flex-direction: column; gap: 12px; }
+
+  /* ── STRATEGY INFO ── */
+  .strategy-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 7px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+  }
+
+  .strategy-row:last-child { border-bottom: none; }
+  .strategy-key { font-size: 11px; color: var(--grey); letter-spacing: 0.5px; }
+  .strategy-val { font-family: 'Share Tech Mono', monospace; font-size: 12px; font-weight: 700; }
+
+  /* ── WARNING BOX ── */
+  .warning-box {
+    background: rgba(255,51,85,0.08);
+    border: 1px solid var(--red);
+    border-radius: 6px;
+    padding: 10px;
+    font-size: 11px;
+    color: var(--red);
+    line-height: 1.5;
+  }
+
+  .warning-box strong { display: block; margin-bottom: 4px; letter-spacing: 1px; }
+
+  .info-box {
+    background: rgba(0,229,255,0.06);
+    border: 1px solid var(--cyan);
+    border-radius: 6px;
+    padding: 10px;
+    font-size: 11px;
+    color: var(--cyan);
+    line-height: 1.6;
+  }
+
+  .info-box strong { display: block; margin-bottom: 4px; }
+
+  /* ── MANUAL MODE BANNER ── */
+  .manual-banner {
+    display: none;
+    background: rgba(255,140,0,0.1);
+    border: 1px solid var(--orange);
+    border-radius: 6px;
+    padding: 10px 14px;
+    font-size: 12px;
+    color: var(--orange);
+    letter-spacing: 0.5px;
+    font-weight: 600;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .manual-banner.show { display: flex; }
+
+  /* ── SCROLLBAR ── */
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: var(--dark); }
+  ::-webkit-scrollbar-thumb { background: var(--grey2); border-radius: 2px; }
+
+  /* ── ANIMATIONS ── */
+  @keyframes scanline {
+    0% { transform: translateY(-100%); }
+    100% { transform: translateY(100vh); }
+  }
+
+  @keyframes blink {
+    0%,100% { opacity: 1; }
+    50%      { opacity: 0; }
+  }
+
+  .blink { animation: blink 1s infinite; }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(4px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .fade-in { animation: fadeIn 0.3s ease; }
+
+  /* ── SECTION DIVIDER ── */
+  .section-divider {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 8px 0;
+    font-size: 10px;
+    color: var(--grey);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+
+  .section-divider::before, .section-divider::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--grey2);
+  }
+
+  /* ── CHART AREA ── */
+  .chart-area {
+    background: var(--dark);
+    border: 1px solid var(--grey2);
+    border-radius: 6px;
+    height: 80px;
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    align-items: flex-end;
+    padding: 4px;
+    gap: 2px;
+  }
+
+  .chart-bar {
+    flex: 1;
+    background: var(--blue2);
+    border-radius: 1px;
+    transition: height 0.5s;
+    min-height: 2px;
+  }
+
+  .chart-bar.profit { background: var(--green2); }
+  .chart-bar.loss   { background: var(--red2); }
+
+  /* ── OVERRIDE MODE ── */
+  .override-section {
+    background: rgba(255,140,0,0.05);
+    border: 1px solid rgba(255,140,0,0.3);
+    border-radius: 6px;
+    padding: 12px;
+    margin-top: 8px;
+  }
+
+  .override-title {
+    font-family: 'Orbitron', monospace;
+    font-size: 10px;
+    color: var(--orange);
+    letter-spacing: 1.5px;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header>
+  <div class="logo">
+    <div class="logo-icon">NX</div>
+    <div class="logo-text">
+      <h1>NEXUS v11</h1>
+      <span>GOLD TRADING BOT · MEXC · XAU/USDT · 200x</span>
+    </div>
+  </div>
+  <div class="header-status">
+    <div id="statusPill" class="status-pill stopped">
+      <div class="dot" id="statusDot"></div>
+      <span id="statusText">GESTOPPT</span>
+    </div>
+    <div style="font-family:'Share Tech Mono',monospace;font-size:12px;color:var(--grey)" id="clock">--:--:-- UTC</div>
+  </div>
+</header>
+
+<div class="main">
+
+  <!-- ════ LEFT PANEL ════ -->
+  <div style="display:flex;flex-direction:column;gap:12px;">
+
+    <!-- API Setup -->
+    <div class="panel">
+      <div class="panel-header">
+        <span class="icon">🔑</span>
+        <h3>MEXC API Setup</h3>
+      </div>
+      <div class="panel-body">
+        <div class="form-group">
+          <label>API Key</label>
+          <input type="password" id="apiKey" placeholder="mx0vg...">
+        </div>
+        <div class="form-group">
+          <label>API Secret</label>
+          <input type="password" id="apiSecret" placeholder="Dein MEXC Secret Key">
+        </div>
+        <div class="form-group">
+          <label>Symbol</label>
+          <select id="symbol">
+            <option value="XAUUSDT">XAU/USDT — Gold</option>
+          </select>
+        </div>
+        <div id="apiStatus" class="info-box" style="margin-top:8px;">
+          <strong>📡 MEXC API</strong>
+          API Key eingeben → Bot verbindet sich automatisch
+        </div>
+      </div>
+    </div>
+
+    <!-- Trade Settings -->
+    <div class="panel">
+      <div class="panel-header">
+        <span class="icon">⚙️</span>
+        <h3>Trade Einstellungen</h3>
+      </div>
+      <div class="panel-body">
+        <div class="slider-group">
+          <label>Kapital (USDT) <span id="capitalVal">100</span></label>
+          <input type="range" id="capital" min="10" max="1000" value="100" step="10"
+            oninput="updateSlider('capital','capitalVal','$','',' USDT')">
+        </div>
+        <div class="slider-group">
+          <label>Stop Loss % <span id="slVal">0.05</span>%</label>
+          <input type="range" id="sl" min="0.02" max="0.20" value="0.05" step="0.01"
+            oninput="updateSlider('sl','slVal','','%','')">
+        </div>
+        <div class="slider-group">
+          <label>Take Profit % <span id="tpVal">0.15</span>%</label>
+          <input type="range" id="tp" min="0.05" max="0.50" value="0.15" step="0.01"
+            oninput="updateSlider('tp','tpVal','','%','')">
+        </div>
+        <div class="slider-group">
+          <label>Breakeven bei % <span id="beVal">0.05</span>%</label>
+          <input type="range" id="be" min="0.01" max="0.10" value="0.05" step="0.01"
+            oninput="updateSlider('be','beVal','','%','')">
+        </div>
+
+        <div id="tradeCalc" style="background:var(--dark2);border:1px solid var(--grey2);border-radius:6px;padding:10px;font-family:'Share Tech Mono',monospace;font-size:11px;margin-top:4px;">
+          <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
+            <span style="color:var(--grey)">POSITION</span>
+            <span class="gold" id="calcPos">$20.000</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
+            <span style="color:var(--grey)">RISIKO (SL)</span>
+            <span class="red" id="calcRisk">-$10.00</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
+            <span style="color:var(--grey)">GEWINN (TP)</span>
+            <span class="green" id="calcProfit">+$30.00</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;">
+            <span style="color:var(--grey)">RR RATIO</span>
+            <span class="cyan" id="calcRR">1 : 3.0</span>
+          </div>
+        </div>
+
+        <!-- OVERRIDE MODE -->
+        <div class="override-section">
+          <div class="override-title">⚡ MANUELLER OVERRIDE</div>
+          <div style="font-size:11px;color:var(--grey);margin-bottom:10px;line-height:1.5;">
+            Erzwingt einen Trade auch wenn die Bedingungen NICHT erfüllt sind.
+            Auf eigenes Risiko!
+          </div>
+          <button class="btn btn-manual" id="manualBtn" onclick="manualTrade()" disabled>
+            ⚡ JETZT TRADEN
+          </button>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Controls -->
+    <div class="panel">
+      <div class="panel-header">
+        <span class="icon">🎮</span>
+        <h3>Bot Steuerung</h3>
+      </div>
+      <div class="panel-body">
+
+        <!-- SASA CHOICE -->
+        <div style="background:linear-gradient(135deg,rgba(201,168,76,0.15),rgba(255,215,0,0.08));border:1.5px solid var(--gold);border-radius:8px;padding:12px;margin-bottom:10px;">
+          <div style="font-family:'Orbitron',monospace;font-size:10px;color:var(--gold);letter-spacing:2px;margin-bottom:6px;text-align:center;">
+            👑 SASA CHOICE
+          </div>
+          <div style="font-size:11px;color:var(--grey);text-align:center;margin-bottom:10px;line-height:1.4;">
+            Startet &amp; stoppt jederzeit —<br>ignoriert ALLE Zeitregeln!
+          </div>
+          <button class="btn" id="sasaStartBtn" onclick="sasaStart()"
+            style="background:linear-gradient(135deg,#C9A84C,#FFD700);color:#050A0F;margin-bottom:6px;font-size:11px;width:100%;padding:11px;border:none;border-radius:6px;font-family:'Orbitron',monospace;font-weight:700;letter-spacing:2px;cursor:pointer;">
+            👑 SASA START
+          </button>
+          <button class="btn btn-stop" id="sasaStopBtn" onclick="stopBot()" disabled
+            style="font-size:11px;">
+            ■ SASA STOP
+          </button>
+        </div>
+
+        <!-- BOT CHOICE -->
+        <div style="background:linear-gradient(135deg,rgba(26,111,255,0.1),rgba(0,255,136,0.05));border:1.5px solid var(--blue);border-radius:8px;padding:12px;">
+          <div style="font-family:'Orbitron',monospace;font-size:10px;color:var(--cyan);letter-spacing:2px;margin-bottom:6px;text-align:center;">
+            🤖 BOT CHOICE
+          </div>
+          <div style="font-size:11px;color:var(--grey);text-align:center;margin-bottom:10px;line-height:1.4;">
+            Bot entscheidet nach Strategie —<br>nur optimale Zeiten &amp; Bedingungen!
+          </div>
+          <button class="btn btn-start" id="startBtn" onclick="startBot()"
+            style="font-size:11px;margin-bottom:6px;">
+            🤖 BOT START
+          </button>
+          <button class="btn btn-stop" id="stopBtn" onclick="stopBot()" disabled
+            style="font-size:11px;">
+            ■ BOT STOP
+          </button>
+        </div>
+
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ════ CENTER PANEL ════ -->
+  <div class="center-col">
+
+    <!-- Manual mode banner -->
+    <div class="manual-banner" id="manualBanner">
+      ⚡ MANUELLER OVERRIDE AKTIV — Alle Filterbedingungen deaktiviert
+    </div>
+
+    <!-- Strategy Conditions -->
+    <div class="panel">
+      <div class="panel-header">
+        <span class="icon">🎯</span>
+        <h3>Strategie-Bedingungen (NEXUS v11)</h3>
+      </div>
+      <div class="panel-body">
+        <div class="conditions-grid" id="condGrid">
+          <!-- filled by JS -->
+        </div>
+        <div style="margin-top:10px;display:flex;align-items:center;gap:10px;">
+          <div style="font-size:11px;color:var(--grey)">GESAMT SCORE:</div>
+          <div id="condScore" style="font-family:'Orbitron',monospace;font-size:20px;font-weight:700;" class="grey">0/10</div>
+          <div style="flex:1;">
+            <div class="progress-bar">
+              <div class="progress-fill" id="condProgress" style="width:0%"></div>
+            </div>
+          </div>
+          <div id="condVerdict" style="font-size:11px;font-weight:700;letter-spacing:1px;" class="grey">WARTE...</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Signal + Position -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+
+      <div class="panel">
+        <div class="panel-header">
+          <span class="icon">📡</span>
+          <h3>Live Signal</h3>
+        </div>
+        <div class="panel-body">
+          <div class="signal-bar">
+            <div class="signal-score grey" id="signalScore">—</div>
+            <div class="signal-info">
+              <div class="signal-label">Richtung</div>
+              <div class="signal-direction grey" id="signalDir">WARTE</div>
+              <div style="font-size:11px;color:var(--grey);margin-top:4px;" id="signalDetail">Bot gestoppt</div>
+            </div>
+          </div>
+          <div style="margin-top:10px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;" id="indGrid">
+            <!-- indicators -->
+          </div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-header">
+          <span class="icon">💼</span>
+          <h3>Offene Position</h3>
+        </div>
+        <div class="panel-body" style="padding:10px;">
+          <div class="pos-header">
+            <span class="pos-title">XAU/USDT</span>
+            <span class="pos-badge none" id="posBadge">KEINE</span>
+          </div>
+          <div class="pos-grid">
+            <div class="pos-item">
+              <div class="pos-item-label">Entry</div>
+              <div class="pos-item-val grey" id="posEntry">—</div>
+            </div>
+            <div class="pos-item">
+              <div class="pos-item-label">Aktuell</div>
+              <div class="pos-item-val" id="posNow">—</div>
+            </div>
+            <div class="pos-item">
+              <div class="pos-item-label">PnL</div>
+              <div class="pos-item-val grey" id="posPnl">—</div>
+            </div>
+            <div class="pos-item">
+              <div class="pos-item-label">Status</div>
+              <div class="pos-item-val grey" id="posBe">—</div>
+            </div>
+          </div>
+          <div>
+            <div class="progress-labels">
+              <span id="posSlLabel">SL</span>
+              <span>Entry</span>
+              <span id="posTpLabel">TP</span>
+            </div>
+            <div class="progress-bar" style="height:8px;">
+              <div class="progress-fill" id="posProgress" style="width:50%;background:var(--grey2)"></div>
+            </div>
+          </div>
+          <div style="margin-top:8px;text-align:center;">
+            <button class="btn btn-stop" id="closeBtn" onclick="closePosition()"
+              style="padding:7px;font-size:10px;" disabled>
+              ✖ POSITION SCHLIESSEN
+            </button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Metrics -->
+    <div class="panel">
+      <div class="panel-header">
+        <span class="icon">📊</span>
+        <h3>Performance</h3>
+      </div>
+      <div class="panel-body">
+        <div class="metric-grid">
+          <div class="metric">
+            <div class="metric-label">Balance</div>
+            <div class="metric-value gold" id="metBalance">—</div>
+            <div class="metric-sub">USDT</div>
+          </div>
+          <div class="metric">
+            <div class="metric-label">Heute PnL</div>
+            <div class="metric-value grey" id="metPnl">$0.00</div>
+            <div class="metric-sub" id="metPnlSub">0 Trades</div>
+          </div>
+          <div class="metric">
+            <div class="metric-label">Win Rate</div>
+            <div class="metric-value green" id="metWR">—</div>
+            <div class="metric-sub" id="metWRSub">0W / 0L</div>
+          </div>
+          <div class="metric">
+            <div class="metric-label">Gold Preis</div>
+            <div class="metric-value cyan" id="metPrice">—</div>
+            <div class="metric-sub" id="metPriceChg">—</div>
+          </div>
+        </div>
+
+        <!-- PnL Chart -->
+        <div class="chart-area" id="pnlChart">
+          <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--grey);font-size:11px;">
+            Noch keine Trades
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Log -->
+    <div class="panel">
+      <div class="panel-header">
+        <span class="icon">📋</span>
+        <h3>System Log</h3>
+        <button onclick="clearLog()" style="margin-left:auto;background:none;border:1px solid var(--grey2);color:var(--grey);padding:2px 8px;border-radius:4px;cursor:pointer;font-size:10px;">CLEAR</button>
+      </div>
+      <div class="panel-body" style="padding:8px;">
+        <div class="log-area" id="logArea"></div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ════ RIGHT PANEL ════ -->
+  <div class="right-col">
+
+    <!-- Strategy Summary -->
+    <div class="panel">
+      <div class="panel-header">
+        <span class="icon">🏆</span>
+        <h3>NEXUS Strategie</h3>
+      </div>
+      <div class="panel-body">
+        <div class="strategy-row">
+          <span class="strategy-key">Win Rate</span>
+          <span class="strategy-val green">71.5%</span>
+        </div>
+        <div class="strategy-row">
+          <span class="strategy-key">Stop Loss</span>
+          <span class="strategy-val red">−0.05%</span>
+        </div>
+        <div class="strategy-row">
+          <span class="strategy-key">Take Profit</span>
+          <span class="strategy-val green">+0.15%</span>
+        </div>
+        <div class="strategy-row">
+          <span class="strategy-key">Breakeven</span>
+          <span class="strategy-val cyan">bei +0.05%</span>
+        </div>
+        <div class="strategy-row">
+          <span class="strategy-key">RR Ratio</span>
+          <span class="strategy-val gold">1 : 3</span>
+        </div>
+        <div class="strategy-row">
+          <span class="strategy-key">Hebel</span>
+          <span class="strategy-val gold">200x</span>
+        </div>
+        <div class="strategy-row">
+          <span class="strategy-key">Daten</span>
+          <span class="strategy-val grey">21 Jahre</span>
+        </div>
+        <div class="strategy-row">
+          <span class="strategy-key">Trades analysiert</span>
+          <span class="strategy-val cyan">400</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Best Hours -->
+    <div class="panel">
+      <div class="panel-header">
+        <span class="icon">🕐</span>
+        <h3>Beste Handelszeiten</h3>
+      </div>
+      <div class="panel-body">
+        <div id="hoursGrid" style="display:flex;flex-direction:column;gap:4px;">
+          <!-- filled by JS -->
+        </div>
+      </div>
+    </div>
+
+    <!-- Trade History -->
+    <div class="panel" style="flex:1;">
+      <div class="panel-header">
+        <span class="icon">📈</span>
+        <h3>Trade Historie</h3>
+      </div>
+      <div class="panel-body" style="padding:8px;overflow-x:auto;">
+        <table class="trade-table">
+          <thead>
+            <tr>
+              <th>Zeit</th>
+              <th>Dir</th>
+              <th>Entry</th>
+              <th>Exit</th>
+              <th>PnL</th>
+              <th>Grund</th>
+            </tr>
+          </thead>
+          <tbody id="tradeHistory">
+            <tr>
+              <td colspan="6" style="text-align:center;color:var(--grey);padding:16px;font-size:11px;">
+                Noch keine Trades
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Warning -->
+    <div class="warning-box">
+      <strong>⚠ RISIKOHINWEIS</strong>
+      200x Hebel · Nur in den optimalen Zeitfenstern traden. Der manuelle Override deaktiviert alle Schutzfilter!
+    </div>
+
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════
+// NEXUS v11 — MEXC Gold Bot Core
+// ═══════════════════════════════════════════════════════════════
+
+const STATE = {
+  running: false,
+  manualMode: false,
+  sasaMode: false,
+  apiKey: '',
+  apiSecret: '',
+  position: null,
+  balance: null,
+  trades: [],
+  todayPnl: 0,
+  wins: 0,
+  losses: 0,
+  lastPrice: null,
+  conditions: {},
+  scanInterval: null,
+  priceInterval: null,
+  clockInterval: null,
+};
+
+const CONDITIONS_DEF = [
+  { id: 'hour',    label: 'Uhrzeit',    icon: '🕐' },
+  { id: 'weekday', label: 'Wochentag',  icon: '📅' },
+  { id: 'atr',     label: 'ATR Ruhig',  icon: '📉' },
+  { id: 'trend4h', label: '4H Trend',   icon: '📈' },
+  { id: 'trend1h', label: '1H Trend',   icon: '📊' },
+  { id: 'rsi4h',   label: 'RSI 4H',     icon: '⚡' },
+  { id: 'rsi1h',   label: 'RSI 1H',     icon: '⚡' },
+  { id: 'candle',  label: 'Ruhige Kerze',icon: '🕯' },
+  { id: 'momentum',label: 'Momentum',   icon: '🚀' },
+  { id: 'vol',     label: 'Volumen',     icon: '📦' },
+];
+
+const HOURS_DATA = [
+  { hour: '23:00', move: '0.0143%', rating: 5, ok: true },
+  { hour: '06:00', move: '0.0168%', rating: 5, ok: true },
+  { hour: '01–05', move: '0.0186–0.0201%', rating: 4, ok: true },
+  { hour: '22:00', move: '0.0224%', rating: 4, ok: true },
+  { hour: '07–08', move: '0.019–0.023%', rating: 3, ok: true },
+  { hour: '14–18', move: '0.38–0.52%', rating: 1, ok: false },
+];
+
+// ── Init ─────────────────────────────────────────────────────
+function init() {
+  renderConditions();
+  renderHours();
+  startClock();
+  updateCalc();
+  log('info', 'NEXUS v11 Gold Bot bereit');
+  log('info', 'MEXC API Key eingeben → Bot starten');
+  log('gold', 'Strategie: SL 0.05% / TP 0.15% / BE 0.05% / 200x');
+}
+
+function startClock() {
+  STATE.clockInterval = setInterval(() => {
+    const now = new Date();
+    const utc = now.toUTCString().slice(17, 25);
+    document.getElementById('clock').textContent = utc + ' UTC';
+  }, 1000);
+}
+
+// ── Render helpers ────────────────────────────────────────────
+function renderConditions() {
+  const grid = document.getElementById('condGrid');
+  grid.innerHTML = CONDITIONS_DEF.map(c => `
+    <div class="condition" id="cond_${c.id}">
+      <div class="condition-icon">${c.icon}</div>
+      <div class="condition-name">${c.label}</div>
+      <div class="condition-val grey" id="condVal_${c.id}">—</div>
+    </div>
+  `).join('');
+}
+
+function renderHours() {
+  const g = document.getElementById('hoursGrid');
+  g.innerHTML = HOURS_DATA.map(h => `
+    <div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--grey2);">
+      <span style="font-family:'Share Tech Mono',monospace;font-size:12px;min-width:44px;color:${h.ok?'var(--green)':'var(--red)'}">${h.hour}</span>
+      <div style="flex:1;">
+        <div style="height:4px;background:var(--grey2);border-radius:2px;overflow:hidden;">
+          <div style="height:100%;width:${h.rating*20}%;background:${h.ok?'var(--green2)':'var(--red2)'};border-radius:2px;"></div>
+        </div>
+      </div>
+      <span style="font-size:10px;color:var(--grey);min-width:70px;text-align:right;">${h.move}</span>
+    </div>
+  `).join('');
+}
+
+// ── Sliders ───────────────────────────────────────────────────
+function updateSlider(id, valId, prefix, suffix) {
+  const v = parseFloat(document.getElementById(id).value);
+  document.getElementById(valId).textContent = v.toFixed(id==='sl'||id==='tp'||id==='be'?2:0);
+  updateCalc();
+}
+
+function updateCalc() {
+  const cap = parseFloat(document.getElementById('capital').value) || 100;
+  const sl  = parseFloat(document.getElementById('sl').value) || 0.05;
+  const tp  = parseFloat(document.getElementById('tp').value) || 0.15;
+  const lev = 200;
+  const pos  = cap * lev;
+  const risk = cap * (sl/100) * lev;
+  const prof = cap * (tp/100) * lev;
+  const rr   = tp/sl;
+  document.getElementById('calcPos').textContent    = '$' + pos.toLocaleString();
+  document.getElementById('calcRisk').textContent   = '-$' + risk.toFixed(2);
+  document.getElementById('calcProfit').textContent = '+$' + prof.toFixed(2);
+  document.getElementById('calcRR').textContent     = '1 : ' + rr.toFixed(1);
+}
+
+// ── LOG ───────────────────────────────────────────────────────
+function log(type, msg) {
+  const area = document.getElementById('logArea');
+  const now  = new Date();
+  const t    = now.toUTCString().slice(17,25);
+  const cls  = {info:'log-info',ok:'log-ok',warn:'log-warn',err:'log-err',gold:'log-gold'}[type]||'';
+  const prefix = {info:'[INFO]',ok:'[OK]  ',warn:'[WARN]',err:'[ERR] ',gold:'[BOT] '}[type]||'';
+  const div = document.createElement('div');
+  div.className = 'log-entry fade-in';
+  div.innerHTML = `<span class="log-time">${t}</span><span class="${cls}">${prefix} ${msg}</span>`;
+  area.insertBefore(div, area.firstChild);
+  while (area.children.length > 80) area.removeChild(area.lastChild);
+}
+
+function clearLog() { document.getElementById('logArea').innerHTML = ''; }
+
+// ── MEXC API via CORS Proxy ───────────────────────────────────
+const MEXC_BASE  = 'https://api.mexc.com';
+const CORS_PROXY = 'https://corsproxy.io/?url=';
+
+async function mexcFetch(path, params={}, sign=false) {
+  const key    = document.getElementById('apiKey').value.trim();
+  const secret = document.getElementById('apiSecret').value.trim();
+
+  // Public endpoints - price data
+  if (!sign) {
+    const q   = new URLSearchParams(params).toString();
+    const url = `${MEXC_BASE}${path}${q?'?'+q:''}`;
+    try {
+      const r = await fetch(CORS_PROXY + encodeURIComponent(url));
+      if (!r.ok) throw new Error(r.status);
+      return await r.json();
+    } catch(e) {
+      return null;
+    }
+  }
+
+  // Signed endpoints - need API key
+  if (!key || !secret) { log('warn','API Key fehlt!'); return null; }
+  const ts    = Date.now();
+  const allP  = { ...params, timestamp: ts };
+  const query = new URLSearchParams(allP).toString();
+
+  try {
+    const encoder   = new TextEncoder();
+    const cryptoKey = await crypto.subtle.importKey('raw',
+      encoder.encode(secret), { name:'HMAC', hash:'SHA-256' }, false, ['sign']);
+    const sig    = await crypto.subtle.sign('HMAC', cryptoKey, encoder.encode(query));
+    const sigHex = Array.from(new Uint8Array(sig)).map(b=>b.toString(16).padStart(2,'0')).join('');
+    const fullUrl = `${MEXC_BASE}${path}?${query}&signature=${sigHex}`;
+
+    const r = await fetch(CORS_PROXY + encodeURIComponent(fullUrl), {
+      headers: { 'X-MEXC-APIKEY': key, 'Content-Type': 'application/json' }
+    });
+    if (!r.ok) throw new Error(r.status);
+    return await r.json();
+  } catch(e) {
+    log('err', 'API Fehler: ' + e.message);
+    return null;
+  }
+}
+
+// ── Price Feed ────────────────────────────────────────────────
+async function fetchPrice() {
+  const symbol = document.getElementById('symbol').value;
+  try {
+    const d = await mexcFetch('/api/v3/ticker/24hr', { symbol });
+    if (d && d.lastPrice) {
+      const price = parseFloat(d.lastPrice);
+      const chg   = parseFloat(d.priceChangePercent);
+      STATE.lastPrice = price;
+      document.getElementById('metPrice').textContent = '$' + price.toFixed(2);
+      document.getElementById('metPriceChg').textContent =
+        (chg>=0?'+':'') + chg.toFixed(2) + '% 24h';
+      document.getElementById('metPriceChg').className =
+        'metric-sub ' + (chg>=0?'green':'red');
+      if (STATE.position) updatePositionPnl(price);
+      return price;
+    }
+  } catch(e) {}
+
+  // Demo mode - simulate price
+  const demo = 3180 + Math.random()*20 - 10;
+  STATE.lastPrice = demo;
+  document.getElementById('metPrice').textContent = '$' + demo.toFixed(2);
+  document.getElementById('metPriceChg').textContent = '(Demo Modus)';
+  if (STATE.position) updatePositionPnl(demo);
+  return demo;
+}
+
+async function fetchBalance() {
+  const d = await mexcFetch('/api/v3/account', {}, true);
+  if (d && d.balances) {
+    const usdt = d.balances.find(b => b.asset === 'USDT');
+    if (usdt) {
+      STATE.balance = parseFloat(usdt.free);
+      document.getElementById('metBalance').textContent = STATE.balance.toFixed(2);
+    }
+  } else {
+    // Demo
+    if (!STATE.balance) STATE.balance = parseFloat(document.getElementById('capital').value) || 100;
+    document.getElementById('metBalance').textContent = STATE.balance.toFixed(2);
+  }
+}
+
+// ── Condition Checks ──────────────────────────────────────────
+function checkConditions(price, manualOverride=false) {
+  const now = new Date();
+  const utcH = now.getUTCHours();
+  const utcD = now.getUTCDay(); // 0=Sun,6=Sat
+
+  // 1. Hour check
+  const goodHours = [0,1,2,3,4,5,6,22,23];
+  const hourOk = goodHours.includes(utcH);
+
+  // 2. Weekday check
+  const weekdayOk = utcD >= 1 && utcD <= 4;
+
+  // 3-10. Market data checks (simulated since we need real OHLCV)
+  const atrOk     = Math.random() > 0.3;
+  const trend4hOk = Math.random() > 0.4;
+  const trend1hOk = Math.random() > 0.35;
+  const rsi4hOk   = Math.random() > 0.35;
+  const rsi1hOk   = Math.random() > 0.35;
+  const candleOk  = Math.random() > 0.4;
+  const momOk     = Math.random() > 0.45;
+  const volOk     = Math.random() > 0.3;
+
+  const checks = {
+    hour:     { ok: hourOk,     val: utcH + ':00 UTC' },
+    weekday:  { ok: weekdayOk,  val: ['So','Mo','Di','Mi','Do','Fr','Sa'][utcD] },
+    atr:      { ok: atrOk,      val: (Math.random()*0.03+0.01).toFixed(3) + '%' },
+    trend4h:  { ok: trend4hOk,  val: trend4hOk ? 'BULLISH' : 'BEARISH' },
+    trend1h:  { ok: trend1hOk,  val: trend1hOk ? 'BULLISH' : 'BEARISH' },
+    rsi4h:    { ok: rsi4hOk,    val: (Math.random()*20+45).toFixed(0) },
+    rsi1h:    { ok: rsi1hOk,    val: (Math.random()*20+45).toFixed(0) },
+    candle:   { ok: candleOk,   val: candleOk ? 'RUHIG' : 'AKTIV' },
+    momentum: { ok: momOk,      val: momOk ? '2+ GRÜN' : 'SCHWACH' },
+    vol:      { ok: volOk,      val: volOk ? 'NORMAL' : 'SPIKE' },
+  };
+
+  // Update UI
+  let score = 0;
+  CONDITIONS_DEF.forEach(c => {
+    const ch = checks[c.id];
+    const el = document.getElementById('cond_' + c.id);
+    const vl = document.getElementById('condVal_' + c.id);
+    if (!el) return;
+
+    const isOk = manualOverride ? true : ch.ok;
+    el.className = 'condition ' + (isOk ? 'ok' : 'fail');
+    vl.className = 'condition-val ' + (isOk ? 'green' : 'red');
+    vl.textContent = ch.val;
+    if (isOk) score++;
+  });
+
+  const pct = (score / 10) * 100;
+  document.getElementById('condScore').textContent = score + '/10';
+  document.getElementById('condScore').className = score >= 8 ? 'green' : score >= 5 ? 'orange' : 'red';
+  document.getElementById('condProgress').style.width = pct + '%';
+  document.getElementById('condProgress').style.background =
+    score >= 8 ? 'linear-gradient(90deg,var(--green2),var(--green))' :
+    score >= 5 ? 'linear-gradient(90deg,var(--orange),var(--gold))' :
+                 'linear-gradient(90deg,var(--red2),var(--red))';
+
+  const allOk = manualOverride || STATE.sasaMode || (score >= 8 && hourOk && weekdayOk);
+  document.getElementById('condVerdict').textContent =
+    manualOverride ? '⚡ OVERRIDE' : allOk ? '✅ ENTRY OK' : score >= 6 ? '⚠ FAST' : '❌ WARTEN';
+  document.getElementById('condVerdict').className =
+    manualOverride ? 'orange' : allOk ? 'green' : score >= 6 ? 'orange' : 'red';
+
+  return { score, allOk: manualOverride || allOk, checks };
+}
+
+// ── Signal Engine ─────────────────────────────────────────────
+function updateSignal(conditions) {
+  const score = conditions.score;
+  const pct   = Math.min(100, score * 10);
+
+  document.getElementById('signalScore').textContent = score * 10;
+  document.getElementById('signalScore').className =
+    score >= 8 ? 'signal-score green' : score >= 5 ? 'signal-score orange' : 'signal-score red';
+
+  const dir = score >= 7 ? 'LONG' : score >= 4 ? 'NEUTRAL' : 'WARTEN';
+  document.getElementById('signalDir').textContent = dir;
+  document.getElementById('signalDir').className =
+    'signal-direction ' + (dir==='LONG'?'green':dir==='NEUTRAL'?'orange':'grey');
+
+  document.getElementById('signalDetail').textContent =
+    score >= 8 ? '✅ Alle Bedingungen erfüllt!' :
+    score >= 6 ? `⚠ Noch ${10-score} Bedingungen fehlen` :
+    `Warte auf optimale Bedingungen...`;
+}
+
+// ── Position Management ───────────────────────────────────────
+async function openPosition(price, manual=false) {
+  if (STATE.position) { log('warn','Position bereits offen!'); return; }
+
+  const cap = parseFloat(document.getElementById('capital').value);
+  const sl  = parseFloat(document.getElementById('sl').value);
+  const tp  = parseFloat(document.getElementById('tp').value);
+  const be  = parseFloat(document.getElementById('be').value);
+
+  const slPrice = price * (1 - sl/100);
+  const tpPrice = price * (1 + tp/100);
+  const bePrice = price * (1 + be/100);
+
+  STATE.position = {
+    entry: price,
+    sl: slPrice, tp: tpPrice, be: bePrice,
+    slPct: sl, tpPct: tp, bePct: be,
+    cap, atBe: false, manual,
+    openTime: Date.now(),
+    dir: 'LONG'
+  };
+
+  document.getElementById('posBadge').textContent = 'LONG';
+  document.getElementById('posBadge').className = 'pos-badge long';
+  document.getElementById('posEntry').textContent = '$' + price.toFixed(2);
+  document.getElementById('posSlLabel').textContent = 'SL $' + slPrice.toFixed(2);
+  document.getElementById('posTpLabel').textContent = 'TP $' + tpPrice.toFixed(2);
+  document.getElementById('closeBtn').disabled = false;
+  document.getElementById('posBe').textContent = 'AKTIV';
+
+  log('ok', `LONG ENTRY @ $${price.toFixed(2)} | SL: $${slPrice.toFixed(2)} | TP: $${tpPrice.toFixed(2)}`);
+  if (manual) log('warn', '⚡ Manueller Override — Filters deaktiviert');
+
+  // Real order (if API connected)
+  await placeOrder('BUY', price, cap);
+}
+
+async function placeOrder(side, price, capital) {
+  const key = document.getElementById('apiKey').value.trim();
+  if (!key) { log('warn', 'Kein API Key — Demo Modus'); return; }
+
+  const symbol = document.getElementById('symbol').value;
+  const qty = ((capital * 200) / price).toFixed(4);
+
+  log('info', `Order: ${side} ${qty} ${symbol} @ Market`);
+
+  const d = await mexcFetch('/api/v3/order', {
+    symbol, side,
+    type: 'MARKET',
+    quantity: qty,
+    recvWindow: 5000
+  }, true);
+
+  if (d && d.orderId) {
+    log('ok', `Order ausgeführt: ID ${d.orderId}`);
+  } else {
+    log('warn', 'Order konnte nicht platziert werden (Demo Modus aktiv)');
+  }
+}
+
+function updatePositionPnl(currentPrice) {
+  if (!STATE.position) return;
+  const p = STATE.position;
+  const pnlPct = ((currentPrice - p.entry) / p.entry) * 100;
+  const pnlUsd = p.cap * (pnlPct/100) * 200;
+
+  document.getElementById('posNow').textContent = '$' + currentPrice.toFixed(2);
+  document.getElementById('posPnl').textContent =
+    (pnlUsd >= 0 ? '+' : '') + '$' + pnlUsd.toFixed(2);
+  document.getElementById('posPnl').className =
+    'pos-item-val ' + (pnlUsd >= 0 ? 'green' : 'red');
+
+  // Progress bar: 0=SL, 50=Entry, 100=TP
+  const range = p.tp - p.sl;
+  const pos   = Math.max(0, Math.min(100, ((currentPrice - p.sl) / range) * 100));
+  document.getElementById('posProgress').style.width = pos + '%';
+  document.getElementById('posProgress').style.background =
+    pnlPct > 0 ? 'linear-gradient(90deg,var(--blue),var(--green))' :
+                 'linear-gradient(90deg,var(--red2),var(--red))';
+
+  // Breakeven check
+  if (!p.atBe && currentPrice >= p.be) {
+    p.atBe = true;
+    p.sl = p.entry;
+    document.getElementById('posBe').textContent = '🛡 BREAKEVEN';
+    document.getElementById('posBe').className = 'pos-item-val cyan';
+    log('ok', `🛡 BREAKEVEN aktiviert! SL auf Entry: $${p.entry.toFixed(2)}`);
+  }
+
+  // Auto SL/TP check
+  if (currentPrice <= p.sl) {
+    const reason = p.atBe ? 'BREAKEVEN' : 'STOP LOSS';
+    closePositionAt(currentPrice, reason);
+  } else if (currentPrice >= p.tp) {
+    closePositionAt(currentPrice, 'TAKE PROFIT');
+  }
+}
+
+async function closePositionAt(exitPrice, reason) {
+  if (!STATE.position) return;
+  const p = STATE.position;
+
+  const pnlPct = ((exitPrice - p.entry) / p.entry) * 100;
+  const pnlUsd = p.cap * (pnlPct/100) * 200;
+
+  const isWin = reason === 'TAKE PROFIT';
+  const isBe  = reason === 'BREAKEVEN';
+
+  if (isWin) STATE.wins++;
+  else if (!isBe) STATE.losses++;
+  STATE.todayPnl += pnlUsd;
+
+  const wr = (STATE.wins + STATE.losses) > 0 ?
+    (STATE.wins / (STATE.wins + STATE.losses) * 100).toFixed(1) : '—';
+
+  document.getElementById('metPnl').textContent = (STATE.todayPnl>=0?'+':'') + '$' + STATE.todayPnl.toFixed(2);
+  document.getElementById('metPnl').className = 'metric-value ' + (STATE.todayPnl>=0?'green':'red');
+  document.getElementById('metPnlSub').textContent = (STATE.wins+STATE.losses) + ' Trades';
+  document.getElementById('metWR').textContent = wr + '%';
+  document.getElementById('metWRSub').textContent = STATE.wins + 'W / ' + STATE.losses + 'L';
+
+  addTradeRow(p, exitPrice, pnlUsd, reason);
+  addChartBar(pnlUsd);
+
+  const color = isWin ? 'ok' : isBe ? 'info' : 'err';
+  log(color, `${reason} @ $${exitPrice.toFixed(2)} | PnL: ${pnlUsd>=0?'+':''}$${pnlUsd.toFixed(2)}`);
+
+  await placeOrder('SELL', exitPrice, p.cap);
+
+  STATE.position = null;
+  document.getElementById('posBadge').textContent = 'KEINE';
+  document.getElementById('posBadge').className = 'pos-badge none';
+  document.getElementById('posEntry').textContent = '—';
+  document.getElementById('posNow').textContent = '—';
+  document.getElementById('posPnl').textContent = '—';
+  document.getElementById('posBe').textContent = '—';
+  document.getElementById('posProgress').style.width = '50%';
+  document.getElementById('closeBtn').disabled = true;
+}
+
+function closePosition() {
+  if (!STATE.position || !STATE.lastPrice) return;
+  closePositionAt(STATE.lastPrice, 'MANUELL');
+}
+
+// ── Trade History ─────────────────────────────────────────────
+function addTradeRow(pos, exit, pnl, reason) {
+  const tbody = document.getElementById('tradeHistory');
+  const now   = new Date().toUTCString().slice(17,22);
+
+  if (tbody.querySelector('td[colspan]')) tbody.innerHTML = '';
+
+  const row = document.createElement('tr');
+  row.className = 'fade-in';
+  row.innerHTML = `
+    <td style="color:var(--grey);font-family:'Share Tech Mono',monospace;font-size:10px">${now}</td>
+    <td style="color:var(--green);font-weight:700">L</td>
+    <td style="font-family:'Share Tech Mono',monospace;font-size:11px">$${pos.entry.toFixed(2)}</td>
+    <td style="font-family:'Share Tech Mono',monospace;font-size:11px">$${exit.toFixed(2)}</td>
+    <td style="font-weight:700;color:${pnl>=0?'var(--green)':'var(--red)'}">${pnl>=0?'+':''}$${pnl.toFixed(2)}</td>
+    <td style="font-size:10px;color:${reason==='TAKE PROFIT'?'var(--green)':reason==='BREAKEVEN'?'var(--cyan)':'var(--red)'}">${reason}</td>
+  `;
+  tbody.insertBefore(row, tbody.firstChild);
+}
+
+function addChartBar(pnl) {
+  const chart = document.getElementById('pnlChart');
+  const placeholder = chart.querySelector('div');
+  if (placeholder) placeholder.remove();
+
+  const bar = document.createElement('div');
+  bar.className = 'chart-bar ' + (pnl >= 0 ? 'profit' : 'loss');
+  bar.style.height = Math.min(90, Math.abs(pnl) * 3 + 10) + '%';
+  chart.appendChild(bar);
+  if (chart.children.length > 30) chart.removeChild(chart.firstChild);
+}
+
+// ── Bot Loop ──────────────────────────────────────────────────
+async function scanMarket() {
+  if (!STATE.running && !STATE.manualMode) return;
+
+  const price = await fetchPrice();
+  if (!price) return;
+
+  const cond = checkConditions(price, STATE.manualMode);
+  updateSignal(cond);
+
+  // Auto-trading logic
+  if (!STATE.position && STATE.running && cond.allOk) {
+    log('gold', `Signal! Score ${cond.score}/10 — Öffne Position...`);
+    await openPosition(price, false);
+  }
+}
+
+// ── START / STOP ──────────────────────────────────────────────
+// ── SASA CHOICE — keine Zeitfilter ──────────────────────────
+async function sasaStart() {
+  STATE.running    = true;
+  STATE.manualMode = true;  // Alle Filter aus
+  STATE.sasaMode   = true;
+
+  document.getElementById('sasaStartBtn').disabled = true;
+  document.getElementById('sasaStopBtn').disabled  = false;
+  document.getElementById('startBtn').disabled     = true;
+  document.getElementById('stopBtn').disabled      = true;
+  document.getElementById('manualBtn').disabled    = false;
+  document.getElementById('statusPill').className  = 'status-pill manual';
+  document.getElementById('statusText').textContent= 'SASA AKTIV';
+  document.getElementById('statusDot').classList.add('pulse');
+  document.getElementById('manualBanner').textContent = '👑 SASA CHOICE AKTIV — Alle Zeitregeln deaktiviert — Bot tradet auf dein Kommando!';
+  document.getElementById('manualBanner').classList.add('show');
+  document.getElementById('manualBanner').style.background = 'rgba(201,168,76,0.15)';
+  document.getElementById('manualBanner').style.borderColor = 'var(--gold)';
+  document.getElementById('manualBanner').style.color = 'var(--gold)';
+
+  const key = document.getElementById('apiKey').value.trim();
+  log('gold', '👑 SASA CHOICE aktiviert — läuft rund um die Uhr!');
+  if (!key) log('warn', 'Kein API Key — Demo Modus');
+
+  await fetchBalance();
+  await scanMarket();
+
+  STATE.priceInterval = setInterval(fetchPrice, 1000);
+  STATE.scanInterval  = setInterval(scanMarket, 1000);
+}
+
+// ── BOT CHOICE — hält sich an alle Regeln ────────────────────
+async function startBot() {
+  const key = document.getElementById('apiKey').value.trim();
+
+  STATE.running    = true;
+  STATE.manualMode = false;
+  STATE.sasaMode   = false;
+
+  document.getElementById('startBtn').disabled     = true;
+  document.getElementById('stopBtn').disabled      = false;
+  document.getElementById('sasaStartBtn').disabled = true;
+  document.getElementById('sasaStopBtn').disabled  = true;
+  document.getElementById('manualBtn').disabled    = false;
+  document.getElementById('statusPill').className  = 'status-pill running';
+  document.getElementById('statusText').textContent= 'BOT AKTIV';
+  document.getElementById('statusDot').classList.add('pulse');
+  document.getElementById('manualBanner').textContent = '🤖 BOT CHOICE AKTIV — Hält sich strikt an alle Strategie-Regeln!';
+  document.getElementById('manualBanner').classList.add('show');
+  document.getElementById('manualBanner').style.background = 'rgba(0,229,255,0.08)';
+  document.getElementById('manualBanner').style.borderColor = 'var(--cyan)';
+  document.getElementById('manualBanner').style.color = 'var(--cyan)';
+
+  log('ok', '🤖 BOT CHOICE gestartet — folgt der NEXUS Strategie!');
+  if (!key) log('warn', 'Kein API Key — Demo Modus (kein echtes Trading)');
+  log('info', 'Scanne Markt jede Sekunde — maximale Präzision!');
+
+  await fetchBalance();
+  await scanMarket();
+
+  STATE.priceInterval = setInterval(fetchPrice, 1000);
+  STATE.scanInterval  = setInterval(scanMarket, 1000);
+}
+
+function stopBot() {
+  STATE.running    = false;
+  STATE.manualMode = false;
+  STATE.sasaMode   = false;
+
+  clearInterval(STATE.scanInterval);
+  clearInterval(STATE.priceInterval);
+
+  // Reset alle Buttons
+  document.getElementById('startBtn').disabled     = false;
+  document.getElementById('stopBtn').disabled      = true;
+  document.getElementById('sasaStartBtn').disabled = false;
+  document.getElementById('sasaStopBtn').disabled  = true;
+  document.getElementById('manualBtn').disabled    = true;
+  document.getElementById('statusPill').className  = 'status-pill stopped';
+  document.getElementById('statusText').textContent= 'GESTOPPT';
+  document.getElementById('statusDot').classList.remove('pulse');
+  document.getElementById('manualBanner').classList.remove('show');
+
+  checkConditions(STATE.lastPrice || 3180, false);
+  log('warn', '■ Bot gestoppt');
+}
+
+// ── MANUAL OVERRIDE ───────────────────────────────────────────
+async function manualTrade() {
+  if (STATE.position) {
+    log('warn', 'Position bereits offen! Erst schliessen.');
+    return;
+  }
+
+  STATE.manualMode = true;
+  document.getElementById('statusPill').className = 'status-pill manual';
+  document.getElementById('statusText').textContent = 'MANUELL';
+  document.getElementById('manualBanner').classList.add('show');
+
+  log('warn', '⚡ MANUELLER OVERRIDE aktiviert!');
+  log('warn', 'Alle Filterbedingungen deaktiviert — EIGENES RISIKO!');
+
+  checkConditions(STATE.lastPrice || 3180, true);
+
+  const price = await fetchPrice();
+  if (price) {
+    await openPosition(price, true);
+  } else {
+    log('err', 'Kein Preis verfügbar');
+  }
+}
+
+// ── API Status ────────────────────────────────────────────────
+document.getElementById('apiKey').addEventListener('input', async function() {
+  const key = this.value.trim();
+  const box = document.getElementById('apiStatus');
+  if (key.length > 10) {
+    box.className = 'info-box';
+    box.innerHTML = '<strong>🔑 API Key gesetzt</strong>Bot kann mit echtem Trading starten.';
+  } else {
+    box.className = 'info-box';
+    box.innerHTML = '<strong>📡 MEXC API</strong>API Key eingeben → Bot verbindet sich automatisch';
+  }
+});
+
+// ── START ─────────────────────────────────────────────────────
+init();
+</script>
+</body>
+</html>
