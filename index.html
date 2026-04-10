@@ -1133,6 +1133,10 @@ function init() {
   log('info', 'NEXUS v11 Gold Bot bereit');
   log('info', 'MEXC API Key eingeben → Bot starten');
   log('gold', 'Strategie: SL 0.05% / TP 0.15% / BE 0.05% / 200x');
+  // Balance sofort anzeigen
+  const initCap = parseFloat(document.getElementById('capital').value) || 100;
+  document.getElementById('metBalance').textContent = initCap.toFixed(2);
+  STATE.balance = initCap;
 }
 
 function startClock() {
@@ -1175,6 +1179,11 @@ function updateSlider(id, valId, prefix, suffix) {
   const v = parseFloat(document.getElementById(id).value);
   document.getElementById(valId).textContent = v.toFixed(id==='sl'||id==='tp'||id==='be'?2:0);
   updateCalc();
+  // Update balance display wenn Kapital geändert wird
+  if (id === 'capital' && !STATE.running) {
+    STATE.balance = v;
+    document.getElementById('metBalance').textContent = v.toFixed(2);
+  }
 }
 
 function updateCalc() {
@@ -1208,44 +1217,23 @@ function log(type, msg) {
 
 function clearLog() { document.getElementById('logArea').innerHTML = ''; }
 
-// ── MEXC API via CORS Proxy ───────────────────────────────────
-const MEXC_BASE  = 'https://api.mexc.com';
-const CORS_PROXY = 'https://corsproxy.io/?url=';
+// ── Backend API Calls ────────────────────────────────────────
+// Backend läuft auf demselben Server (kein CORS Problem!)
+const BACKEND = window.location.origin;
 
-async function mexcFetch(path, params={}, sign=false) {
-  const key    = document.getElementById('apiKey').value.trim();
-  const secret = document.getElementById('apiSecret').value.trim();
+function getHeaders() {
+  return {
+    'Content-Type': 'application/json',
+    'X-API-KEY':    document.getElementById('apiKey').value.trim(),
+    'X-API-SECRET': document.getElementById('apiSecret').value.trim(),
+  };
+}
 
-  // Public endpoints - price data
-  if (!sign) {
-    const q   = new URLSearchParams(params).toString();
-    const url = `${MEXC_BASE}${path}${q?'?'+q:''}`;
-    try {
-      const r = await fetch(CORS_PROXY + encodeURIComponent(url));
-      if (!r.ok) throw new Error(r.status);
-      return await r.json();
-    } catch(e) {
-      return null;
-    }
-  }
-
-  // Signed endpoints - need API key
-  if (!key || !secret) { log('warn','API Key fehlt!'); return null; }
-  const ts    = Date.now();
-  const allP  = { ...params, timestamp: ts };
-  const query = new URLSearchParams(allP).toString();
-
+async function apiGet(endpoint, params={}) {
+  const q = new URLSearchParams(params).toString();
+  const url = `${BACKEND}${endpoint}${q?'?'+q:''}`;
   try {
-    const encoder   = new TextEncoder();
-    const cryptoKey = await crypto.subtle.importKey('raw',
-      encoder.encode(secret), { name:'HMAC', hash:'SHA-256' }, false, ['sign']);
-    const sig    = await crypto.subtle.sign('HMAC', cryptoKey, encoder.encode(query));
-    const sigHex = Array.from(new Uint8Array(sig)).map(b=>b.toString(16).padStart(2,'0')).join('');
-    const fullUrl = `${MEXC_BASE}${path}?${query}&signature=${sigHex}`;
-
-    const r = await fetch(CORS_PROXY + encodeURIComponent(fullUrl), {
-      headers: { 'X-MEXC-APIKEY': key, 'Content-Type': 'application/json' }
-    });
+    const r = await fetch(url, { headers: getHeaders() });
     if (!r.ok) throw new Error(r.status);
     return await r.json();
   } catch(e) {
@@ -1254,11 +1242,26 @@ async function mexcFetch(path, params={}, sign=false) {
   }
 }
 
+async function apiPost(endpoint, body={}) {
+  try {
+    const r = await fetch(`${BACKEND}${endpoint}`, {
+      method: 'POST',
+      headers: getHeaders(),
+      body: JSON.stringify(body)
+    });
+    if (!r.ok) throw new Error(r.status);
+    return await r.json();
+  } catch(e) {
+    log('err', 'Order Fehler: ' + e.message);
+    return null;
+  }
+}
+
 // ── Price Feed ────────────────────────────────────────────────
 async function fetchPrice() {
   const symbol = document.getElementById('symbol').value;
   try {
-    const d = await mexcFetch('/api/v3/ticker/24hr', { symbol });
+    const d = await apiGet('/api/price', { symbol });
     if (d && d.lastPrice) {
       const price = parseFloat(d.lastPrice);
       const chg   = parseFloat(d.priceChangePercent);
@@ -1271,30 +1274,38 @@ async function fetchPrice() {
       if (STATE.position) updatePositionPnl(price);
       return price;
     }
-  } catch(e) {}
-
-  // Demo mode - simulate price
-  const demo = 3180 + Math.random()*20 - 10;
-  STATE.lastPrice = demo;
-  document.getElementById('metPrice').textContent = '$' + demo.toFixed(2);
-  document.getElementById('metPriceChg').textContent = '(Demo Modus)';
-  if (STATE.position) updatePositionPnl(demo);
-  return demo;
+  } catch(e) { log('err', 'Preis Fehler: ' + e.message); }
+  return STATE.lastPrice || 3200;
 }
 
 async function fetchBalance() {
-  const d = await mexcFetch('/api/v3/account', {}, true);
-  if (d && d.balances) {
-    const usdt = d.balances.find(b => b.asset === 'USDT');
-    if (usdt) {
-      STATE.balance = parseFloat(usdt.free);
-      document.getElementById('metBalance').textContent = STATE.balance.toFixed(2);
-    }
-  } else {
-    // Demo
-    if (!STATE.balance) STATE.balance = parseFloat(document.getElementById('capital').value) || 100;
+  const key = document.getElementById('apiKey').value.trim();
+  const cap = parseFloat(document.getElementById('capital').value) || 100;
+
+  if (!key) {
+    if (!STATE.balance) STATE.balance = cap;
     document.getElementById('metBalance').textContent = STATE.balance.toFixed(2);
+    return;
   }
+
+  try {
+    const d = await apiGet('/api/balance');
+    if (d && d.balances) {
+      const usdt = d.balances.find(b => b.asset === 'USDT');
+      if (usdt) {
+        STATE.balance = parseFloat(usdt.free);
+        document.getElementById('metBalance').textContent = STATE.balance.toFixed(2);
+        log('ok', '💰 Echte Balance: $' + STATE.balance.toFixed(2) + ' USDT');
+        return;
+      }
+    }
+    if (d && d.error) log('err', 'Balance Fehler: ' + d.error);
+  } catch(e) {
+    log('err', 'Balance Fehler: ' + e.message);
+  }
+
+  if (!STATE.balance) STATE.balance = cap;
+  document.getElementById('metBalance').textContent = STATE.balance.toFixed(2);
 }
 
 // ── Condition Checks ──────────────────────────────────────────
@@ -1424,25 +1435,27 @@ async function openPosition(price, manual=false) {
 }
 
 async function placeOrder(side, price, capital) {
-  const key = document.getElementById('apiKey').value.trim();
-  if (!key) { log('warn', 'Kein API Key — Demo Modus'); return; }
-
+  const key    = document.getElementById('apiKey').value.trim();
+  const secret = document.getElementById('apiSecret').value.trim();
   const symbol = document.getElementById('symbol').value;
+
+  if (!key || !secret) {
+    log('warn', '⚠ Kein API Key — Order NICHT platziert!');
+    log('warn', 'API Key + Secret eingeben für echtes Trading!');
+    return;
+  }
+
   const qty = ((capital * 200) / price).toFixed(4);
+  log('info', `📤 Order: ${side} ${qty} ${symbol} @ Market`);
 
-  log('info', `Order: ${side} ${qty} ${symbol} @ Market`);
-
-  const d = await mexcFetch('/api/v3/order', {
-    symbol, side,
-    type: 'MARKET',
-    quantity: qty,
-    recvWindow: 5000
-  }, true);
+  const d = await apiPost('/api/order', { symbol, side, type: 'MARKET', quantity: qty });
 
   if (d && d.orderId) {
-    log('ok', `Order ausgeführt: ID ${d.orderId}`);
+    log('ok', `✅ Order ausgeführt! ID: ${d.orderId}`);
+  } else if (d && d.error) {
+    log('err', `❌ Order Fehler: ${d.error}`);
   } else {
-    log('warn', 'Order konnte nicht platziert werden (Demo Modus aktiv)');
+    log('err', '❌ Order fehlgeschlagen — prüfe API Key Berechtigungen!');
   }
 }
 
