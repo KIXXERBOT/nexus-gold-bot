@@ -928,6 +928,23 @@
 
     </div>
 
+    <!-- Live Gold Chart -->
+    <div class="panel">
+      <div class="panel-header">
+        <span class="icon">📈</span>
+        <h3>XAU/USDT — Live Kerzen Chart</h3>
+        <div style="margin-left:auto;display:flex;gap:6px;">
+          <button onclick="setChartTF('1m')" id="tf1m" style="background:var(--gold);color:var(--dark);border:none;padding:3px 8px;border-radius:4px;font-size:10px;font-weight:700;cursor:pointer;">1M</button>
+          <button onclick="setChartTF('5m')" id="tf5m" style="background:var(--grey2);color:var(--white);border:none;padding:3px 8px;border-radius:4px;font-size:10px;cursor:pointer;">5M</button>
+          <button onclick="setChartTF('15m')" id="tf15m" style="background:var(--grey2);color:var(--white);border:none;padding:3px 8px;border-radius:4px;font-size:10px;cursor:pointer;">15M</button>
+          <button onclick="setChartTF('1h')" id="tf1h" style="background:var(--grey2);color:var(--white);border:none;padding:3px 8px;border-radius:4px;font-size:10px;cursor:pointer;">1H</button>
+        </div>
+      </div>
+      <div class="panel-body" style="padding:8px;">
+        <canvas id="goldChart" style="width:100%;height:220px;"></canvas>
+      </div>
+    </div>
+
     <!-- Metrics -->
     <div class="panel">
       <div class="panel-header">
@@ -1230,14 +1247,22 @@ function getHeaders() {
 }
 
 async function apiGet(endpoint, params={}) {
+  // Nicht fetchen wenn Bot gestoppt
+  if (!STATE.running && !STATE.manualMode && !STATE.sasaMode) return null;
   const q = new URLSearchParams(params).toString();
   const url = `${BACKEND}${endpoint}${q?'?'+q:''}`;
   try {
-    const r = await fetch(url, { headers: getHeaders() });
+    const r = await fetch(url, {
+      headers: getHeaders(),
+      signal: window._abortController ? window._abortController.signal : undefined
+    });
     if (!r.ok) throw new Error(r.status);
     return await r.json();
   } catch(e) {
-    log('err', 'API Fehler: ' + e.message);
+    if (e.name === 'AbortError') return null;
+    if (STATE.running || STATE.manualMode || STATE.sasaMode) {
+      log('err', 'API Fehler: ' + e.message);
+    }
     return null;
   }
 }
@@ -1669,12 +1694,19 @@ async function startBot() {
 }
 
 function stopBot() {
+  // Alles sofort stoppen
   STATE.running    = false;
   STATE.manualMode = false;
   STATE.sasaMode   = false;
 
-  clearInterval(STATE.scanInterval);
-  clearInterval(STATE.priceInterval);
+  // Alle Intervalle killen
+  if (STATE.scanInterval)  { clearInterval(STATE.scanInterval);  STATE.scanInterval  = null; }
+  if (STATE.priceInterval) { clearInterval(STATE.priceInterval); STATE.priceInterval = null; }
+  if (chartInterval)       { clearInterval(chartInterval);       chartInterval       = null; }
+
+  // Alle laufenden Fetches abbrechen
+  if (window._abortController) window._abortController.abort();
+  window._abortController = new AbortController();
 
   // Reset alle Buttons
   document.getElementById('startBtn').disabled     = false;
@@ -1687,8 +1719,7 @@ function stopBot() {
   document.getElementById('statusDot').classList.remove('pulse');
   document.getElementById('manualBanner').classList.remove('show');
 
-  checkConditions(STATE.lastPrice || 3180, false);
-  log('warn', '■ Bot gestoppt');
+  log('warn', '■ Bot gestoppt — alle Prozesse beendet');
 }
 
 // ── MANUAL OVERRIDE ───────────────────────────────────────────
@@ -1729,8 +1760,163 @@ document.getElementById('apiKey').addEventListener('input', async function() {
   }
 });
 
+// ── CHART ────────────────────────────────────────────────────
+let chartTF = '1m';
+let chartInterval = null;
+let chartCanvas = null;
+let chartCtx = null;
+let klineData = [];
+
+function setChartTF(tf) {
+  chartTF = tf;
+  ['1m','5m','15m','1h'].forEach(t => {
+    const btn = document.getElementById('tf' + t);
+    if (btn) {
+      btn.style.background = t === tf ? 'var(--gold)' : 'var(--grey2)';
+      btn.style.color      = t === tf ? 'var(--dark)'  : 'var(--white)';
+    }
+  });
+  fetchAndDrawChart();
+}
+
+async function fetchAndDrawChart() {
+  const symbol = document.getElementById('symbol').value || 'XAUUSDT';
+  try {
+    const data = await apiGet('/api/klines', { symbol, interval: chartTF, limit: '80' });
+    if (!data || !Array.isArray(data) || data.length === 0) return;
+    klineData = data;
+    drawChart(data);
+  } catch(e) {}
+}
+
+function drawChart(candles) {
+  const canvas = document.getElementById('goldChart');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+
+  // Set canvas size
+  canvas.width  = canvas.offsetWidth  || 800;
+  canvas.height = canvas.offsetHeight || 220;
+  const W = canvas.width;
+  const H = canvas.height;
+
+  // Clear
+  ctx.fillStyle = '#050A0F';
+  ctx.fillRect(0, 0, W, H);
+
+  if (!candles || candles.length === 0) return;
+
+  const pad = { top: 10, right: 60, bottom: 30, left: 10 };
+  const chartW = W - pad.left - pad.right;
+  const chartH = H - pad.top  - pad.bottom;
+
+  // Price range
+  const highs  = candles.map(c => parseFloat(c[2]));
+  const lows   = candles.map(c => parseFloat(c[3]));
+  const minP   = Math.min(...lows)  * 0.9999;
+  const maxP   = Math.max(...highs) * 1.0001;
+  const range  = maxP - minP;
+
+  const n      = candles.length;
+  const cw     = chartW / n;
+  const bodyW  = Math.max(1, cw * 0.6);
+
+  function xOf(i)   { return pad.left + i * cw + cw / 2; }
+  function yOf(p)   { return pad.top + chartH - ((p - minP) / range) * chartH; }
+
+  // Grid lines
+  ctx.strokeStyle = 'rgba(74,106,138,0.2)';
+  ctx.lineWidth = 0.5;
+  for (let i = 0; i <= 4; i++) {
+    const y = pad.top + (chartH / 4) * i;
+    ctx.beginPath(); ctx.moveTo(pad.left, y); ctx.lineTo(W - pad.right, y); ctx.stroke();
+    const price = maxP - (range / 4) * i;
+    ctx.fillStyle = '#4A6A8A';
+    ctx.font = '10px Share Tech Mono, monospace';
+    ctx.fillText('$' + price.toFixed(2), W - pad.right + 4, y + 4);
+  }
+
+  // Draw candles
+  candles.forEach((c, i) => {
+    const o = parseFloat(c[1]);
+    const h = parseFloat(c[2]);
+    const l = parseFloat(c[3]);
+    const cl= parseFloat(c[4]);
+    const bull = cl >= o;
+    const color = bull ? '#00C864' : '#CC1133';
+
+    const x  = xOf(i);
+    const yo = yOf(o);
+    const yc = yOf(cl);
+    const yh = yOf(h);
+    const yl = yOf(l);
+
+    // Wick
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(x, yh); ctx.lineTo(x, yl); ctx.stroke();
+
+    // Body
+    ctx.fillStyle = color;
+    const bodyTop = Math.min(yo, yc);
+    const bodyH   = Math.max(1, Math.abs(yo - yc));
+    ctx.fillRect(x - bodyW/2, bodyTop, bodyW, bodyH);
+  });
+
+  // Current price line
+  if (STATE.lastPrice) {
+    const y = yOf(STATE.lastPrice);
+    ctx.strokeStyle = '#C9A84C';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([4, 4]);
+    ctx.beginPath(); ctx.moveTo(pad.left, y); ctx.lineTo(W - pad.right, y); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = '#C9A84C';
+    ctx.font = 'bold 11px Share Tech Mono, monospace';
+    ctx.fillText('$' + STATE.lastPrice.toFixed(2), W - pad.right + 4, y + 4);
+  }
+
+  // Draw SL/TP lines if position open
+  if (STATE.position) {
+    const drawLine = (price, color, label) => {
+      if (price < minP || price > maxP) return;
+      const y = yOf(price);
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 1.5;
+      ctx.setLineDash([3, 3]);
+      ctx.beginPath(); ctx.moveTo(pad.left, y); ctx.lineTo(W - pad.right, y); ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.fillStyle = color;
+      ctx.font = 'bold 10px Share Tech Mono, monospace';
+      ctx.fillText(label, W - pad.right + 4, y + 4);
+    };
+    drawLine(STATE.position.sl, '#FF3355', 'SL');
+    drawLine(STATE.position.tp, '#00FF88', 'TP');
+    drawLine(STATE.position.entry, '#00E5FF', 'ENT');
+  }
+
+  // Time labels
+  ctx.fillStyle = '#4A6A8A';
+  ctx.font = '9px Share Tech Mono, monospace';
+  const step = Math.floor(n / 6);
+  for (let i = 0; i < n; i += step) {
+    const ts = new Date(candles[i][0]);
+    const label = ts.getUTCHours().toString().padStart(2,'0') + ':' + ts.getUTCMinutes().toString().padStart(2,'0');
+    ctx.fillText(label, xOf(i) - 12, H - 8);
+  }
+}
+
+// Auto-refresh chart
+function startChart() {
+  fetchAndDrawChart();
+  if (chartInterval) clearInterval(chartInterval);
+  chartInterval = setInterval(fetchAndDrawChart, 10000);
+}
+
 // ── START ─────────────────────────────────────────────────────
+window._abortController = new AbortController();
 init();
+startChart();
 </script>
 </body>
 </html>
