@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: nexus-gold-bot
+    env: static
+    staticPublishPath: .
+    buildCommand: echo "NEXUS v11 Ready"
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
