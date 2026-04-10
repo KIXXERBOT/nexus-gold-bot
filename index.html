@@ -783,12 +783,43 @@
         <h3>Bot Steuerung</h3>
       </div>
       <div class="panel-body">
-        <button class="btn btn-start" id="startBtn" onclick="startBot()">
-          ▶ AUTO START
-        </button>
-        <button class="btn btn-stop" id="stopBtn" onclick="stopBot()" disabled>
-          ■ STOP
-        </button>
+
+        <!-- SASA CHOICE -->
+        <div style="background:linear-gradient(135deg,rgba(201,168,76,0.15),rgba(255,215,0,0.08));border:1.5px solid var(--gold);border-radius:8px;padding:12px;margin-bottom:10px;">
+          <div style="font-family:'Orbitron',monospace;font-size:10px;color:var(--gold);letter-spacing:2px;margin-bottom:6px;text-align:center;">
+            👑 SASA CHOICE
+          </div>
+          <div style="font-size:11px;color:var(--grey);text-align:center;margin-bottom:10px;line-height:1.4;">
+            Startet &amp; stoppt jederzeit —<br>ignoriert ALLE Zeitregeln!
+          </div>
+          <button class="btn" id="sasaStartBtn" onclick="sasaStart()"
+            style="background:linear-gradient(135deg,#C9A84C,#FFD700);color:#050A0F;margin-bottom:6px;font-size:11px;width:100%;padding:11px;border:none;border-radius:6px;font-family:'Orbitron',monospace;font-weight:700;letter-spacing:2px;cursor:pointer;">
+            👑 SASA START
+          </button>
+          <button class="btn btn-stop" id="sasaStopBtn" onclick="stopBot()" disabled
+            style="font-size:11px;">
+            ■ SASA STOP
+          </button>
+        </div>
+
+        <!-- BOT CHOICE -->
+        <div style="background:linear-gradient(135deg,rgba(26,111,255,0.1),rgba(0,255,136,0.05));border:1.5px solid var(--blue);border-radius:8px;padding:12px;">
+          <div style="font-family:'Orbitron',monospace;font-size:10px;color:var(--cyan);letter-spacing:2px;margin-bottom:6px;text-align:center;">
+            🤖 BOT CHOICE
+          </div>
+          <div style="font-size:11px;color:var(--grey);text-align:center;margin-bottom:10px;line-height:1.4;">
+            Bot entscheidet nach Strategie —<br>nur optimale Zeiten &amp; Bedingungen!
+          </div>
+          <button class="btn btn-start" id="startBtn" onclick="startBot()"
+            style="font-size:11px;margin-bottom:6px;">
+            🤖 BOT START
+          </button>
+          <button class="btn btn-stop" id="stopBtn" onclick="stopBot()" disabled
+            style="font-size:11px;">
+            ■ BOT STOP
+          </button>
+        </div>
+
       </div>
     </div>
 
@@ -1055,6 +1086,7 @@
 const STATE = {
   running: false,
   manualMode: false,
+  sasaMode: false,
   apiKey: '',
   apiSecret: '',
   position: null,
@@ -1177,42 +1209,41 @@ function log(type, msg) {
 function clearLog() { document.getElementById('logArea').innerHTML = ''; }
 
 // ── MEXC API via CORS Proxy ───────────────────────────────────
+const MEXC_BASE  = 'https://api.mexc.com';
+const CORS_PROXY = 'https://corsproxy.io/?url=';
+
 async function mexcFetch(path, params={}, sign=false) {
   const key    = document.getElementById('apiKey').value.trim();
   const secret = document.getElementById('apiSecret').value.trim();
 
-  // Public endpoints - no auth needed
-  const publicBase = 'https://api.mexc.com';
-
+  // Public endpoints - price data
   if (!sign) {
-    const q = new URLSearchParams(params).toString();
-    const url = `${publicBase}${path}${q?'?'+q:''}`;
+    const q   = new URLSearchParams(params).toString();
+    const url = `${MEXC_BASE}${path}${q?'?'+q:''}`;
     try {
-      const r = await fetch(url);
+      const r = await fetch(CORS_PROXY + encodeURIComponent(url));
       if (!r.ok) throw new Error(r.status);
       return await r.json();
     } catch(e) {
-      // Fallback: simulate data for demo mode
       return null;
     }
   }
 
-  // Signed endpoints
-  if (!key || !secret) return null;
-  const ts = Date.now();
-  const allParams = { ...params, timestamp: ts };
-  const query = new URLSearchParams(allParams).toString();
+  // Signed endpoints - need API key
+  if (!key || !secret) { log('warn','API Key fehlt!'); return null; }
+  const ts    = Date.now();
+  const allP  = { ...params, timestamp: ts };
+  const query = new URLSearchParams(allP).toString();
 
   try {
-    const encoder = new TextEncoder();
-    const keyData = encoder.encode(secret);
-    const msgData = encoder.encode(query);
-    const cryptoKey = await crypto.subtle.importKey('raw', keyData,
-      { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
-    const sig = await crypto.subtle.sign('HMAC', cryptoKey, msgData);
+    const encoder   = new TextEncoder();
+    const cryptoKey = await crypto.subtle.importKey('raw',
+      encoder.encode(secret), { name:'HMAC', hash:'SHA-256' }, false, ['sign']);
+    const sig    = await crypto.subtle.sign('HMAC', cryptoKey, encoder.encode(query));
     const sigHex = Array.from(new Uint8Array(sig)).map(b=>b.toString(16).padStart(2,'0')).join('');
+    const fullUrl = `${MEXC_BASE}${path}?${query}&signature=${sigHex}`;
 
-    const r = await fetch(`${publicBase}${path}?${query}&signature=${sigHex}`, {
+    const r = await fetch(CORS_PROXY + encodeURIComponent(fullUrl), {
       headers: { 'X-MEXC-APIKEY': key, 'Content-Type': 'application/json' }
     });
     if (!r.ok) throw new Error(r.status);
@@ -1326,7 +1357,7 @@ function checkConditions(price, manualOverride=false) {
     score >= 5 ? 'linear-gradient(90deg,var(--orange),var(--gold))' :
                  'linear-gradient(90deg,var(--red2),var(--red))';
 
-  const allOk = manualOverride || (score >= 8 && hourOk && weekdayOk);
+  const allOk = manualOverride || STATE.sasaMode || (score >= 8 && hourOk && weekdayOk);
   document.getElementById('condVerdict').textContent =
     manualOverride ? '⚡ OVERRIDE' : allOk ? '✅ ENTRY OK' : score >= 6 ? '⚠ FAST' : '❌ WARTEN';
   document.getElementById('condVerdict').className =
@@ -1550,21 +1581,60 @@ async function scanMarket() {
 }
 
 // ── START / STOP ──────────────────────────────────────────────
+// ── SASA CHOICE — keine Zeitfilter ──────────────────────────
+async function sasaStart() {
+  STATE.running    = true;
+  STATE.manualMode = true;  // Alle Filter aus
+  STATE.sasaMode   = true;
+
+  document.getElementById('sasaStartBtn').disabled = true;
+  document.getElementById('sasaStopBtn').disabled  = false;
+  document.getElementById('startBtn').disabled     = true;
+  document.getElementById('stopBtn').disabled      = true;
+  document.getElementById('manualBtn').disabled    = false;
+  document.getElementById('statusPill').className  = 'status-pill manual';
+  document.getElementById('statusText').textContent= 'SASA AKTIV';
+  document.getElementById('statusDot').classList.add('pulse');
+  document.getElementById('manualBanner').textContent = '👑 SASA CHOICE AKTIV — Alle Zeitregeln deaktiviert — Bot tradet auf dein Kommando!';
+  document.getElementById('manualBanner').classList.add('show');
+  document.getElementById('manualBanner').style.background = 'rgba(201,168,76,0.15)';
+  document.getElementById('manualBanner').style.borderColor = 'var(--gold)';
+  document.getElementById('manualBanner').style.color = 'var(--gold)';
+
+  const key = document.getElementById('apiKey').value.trim();
+  log('gold', '👑 SASA CHOICE aktiviert — läuft rund um die Uhr!');
+  if (!key) log('warn', 'Kein API Key — Demo Modus');
+
+  await fetchBalance();
+  await scanMarket();
+
+  STATE.priceInterval = setInterval(fetchPrice, 1000);
+  STATE.scanInterval  = setInterval(scanMarket, 1000);
+}
+
+// ── BOT CHOICE — hält sich an alle Regeln ────────────────────
 async function startBot() {
   const key = document.getElementById('apiKey').value.trim();
 
-  STATE.running = true;
+  STATE.running    = true;
   STATE.manualMode = false;
+  STATE.sasaMode   = false;
 
-  document.getElementById('startBtn').disabled = true;
-  document.getElementById('stopBtn').disabled  = false;
-  document.getElementById('manualBtn').disabled = false;
-  document.getElementById('statusPill').className = 'status-pill running';
-  document.getElementById('statusText').textContent = 'AUTO AKTIV';
+  document.getElementById('startBtn').disabled     = true;
+  document.getElementById('stopBtn').disabled      = false;
+  document.getElementById('sasaStartBtn').disabled = true;
+  document.getElementById('sasaStopBtn').disabled  = true;
+  document.getElementById('manualBtn').disabled    = false;
+  document.getElementById('statusPill').className  = 'status-pill running';
+  document.getElementById('statusText').textContent= 'BOT AKTIV';
   document.getElementById('statusDot').classList.add('pulse');
-  document.getElementById('manualBanner').classList.remove('show');
+  document.getElementById('manualBanner').textContent = '🤖 BOT CHOICE AKTIV — Hält sich strikt an alle Strategie-Regeln!';
+  document.getElementById('manualBanner').classList.add('show');
+  document.getElementById('manualBanner').style.background = 'rgba(0,229,255,0.08)';
+  document.getElementById('manualBanner').style.borderColor = 'var(--cyan)';
+  document.getElementById('manualBanner').style.color = 'var(--cyan)';
 
-  log('ok', '▶ Bot gestartet — Auto-Modus');
+  log('ok', '🤖 BOT CHOICE gestartet — folgt der NEXUS Strategie!');
   if (!key) log('warn', 'Kein API Key — Demo Modus (kein echtes Trading)');
   log('info', 'Scanne Markt jede Sekunde — maximale Präzision!');
 
@@ -1578,15 +1648,19 @@ async function startBot() {
 function stopBot() {
   STATE.running    = false;
   STATE.manualMode = false;
+  STATE.sasaMode   = false;
 
   clearInterval(STATE.scanInterval);
   clearInterval(STATE.priceInterval);
 
-  document.getElementById('startBtn').disabled  = false;
-  document.getElementById('stopBtn').disabled   = true;
-  document.getElementById('manualBtn').disabled = true;
-  document.getElementById('statusPill').className = 'status-pill stopped';
-  document.getElementById('statusText').textContent = 'GESTOPPT';
+  // Reset alle Buttons
+  document.getElementById('startBtn').disabled     = false;
+  document.getElementById('stopBtn').disabled      = true;
+  document.getElementById('sasaStartBtn').disabled = false;
+  document.getElementById('sasaStopBtn').disabled  = true;
+  document.getElementById('manualBtn').disabled    = true;
+  document.getElementById('statusPill').className  = 'status-pill stopped';
+  document.getElementById('statusText').textContent= 'GESTOPPT';
   document.getElementById('statusDot').classList.remove('pulse');
   document.getElementById('manualBanner').classList.remove('show');
 
